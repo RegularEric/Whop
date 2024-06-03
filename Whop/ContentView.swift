@@ -7,18 +7,39 @@
 
 import SwiftUI
 
-struct ContentView: View {
+struct ContentView<T: ContentViewInforming>: View {
+    @ObservedObject private var viewModel: T
+
+    init(viewModel: T) {
+        self.viewModel = viewModel
+        Task { await viewModel.getContent() }
+    }
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        if viewModel.isLoading {
+            ProgressView()
+        } else if viewModel.hasError {
+            // ErrorScreen
+        } else {
+            NavigationStack {
+                ScrollView {
+                    LazyVStack {
+                        ForEach(viewModel.content) { item in
+                            if item.isDirectory {
+                                ListRowView(viewModel: ListRowViewModel(item: item))
+                            } else {
+                                NavigationLink(destination: WebView(url: URL(string: item.url!)!)) {
+                                    SingleItemRowView(item: item)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
-        .padding()
     }
 }
 
 #Preview {
-    ContentView()
+    ContentView(viewModel: ContentViewModel(interactor: ContentInteractor()))
 }
